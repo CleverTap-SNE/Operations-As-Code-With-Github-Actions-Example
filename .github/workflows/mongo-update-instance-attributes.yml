@@ -1,0 +1,220 @@
+name: mongo/Update-Instance-Attributes
+
+run-name: mongo/Update-Instance-Attributes-for-${{ inputs.InstancePrivateIP }}-from-${{ inputs.StackName }}-${{ github.run_number }}
+
+on:
+  workflow_call:
+    inputs:
+      StackName:
+        type: string
+        required: true
+        description: Stack Name of the Mongo Cluster the Instance belongs to
+
+      InstancePrivateIP:
+        type: string
+        required: true
+        description: The private IP of the Instance
+
+      AmiId:
+        type: string
+        default: ""
+        description: AMI ID
+
+      InstanceType:
+        type: string
+        default: ""
+        description: Instance Type
+
+jobs:
+  setup-job-environment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate github token
+        run: |
+          echo "A GitHub app installation token was generated for cloning repositories."
+          echo "The GitHub action, such as tibdex/github-app-token, can be used for the same purpose."
+
+      - name: Checkout repo where this GitHub Action is present
+        run: |
+          echo "Checkout the current repository"
+          echo "The GitHub action, such as actions/checkout, can be used for the same purpose."
+
+      - name: Checkout Cloudformation repo
+        run: |
+          echo "Checkout the repository where the infrastructure was managed using code."
+          echo "The GitHub action, such as actions/checkout, can be used for the same purpose."
+
+      - name: Get ami id
+        id: get-ami-id
+        run: |
+          echo "Retrieve the AMI of the specified instance."
+          echo "AMI_ID=ami-placeholder" >> $GITHUB_OUTPUT
+
+      - name: Get instance type
+        id: get-instance-type
+        run: |
+          echo "Retrieve the Instance Type of the specified instance."
+          echo "INSTANCE_TYPE=instance_type" >> $GITHUB_OUTPUT      
+
+      - name: Get list of running replicaset instance ip addresses from cloudformation codebase
+        id: get-list-of-running-replicaset-instance-ip-addresses-from-cloudformation-codebase
+        run: |
+          echo "Get list of running replicaset instance ip addresses from cloudformation codebase"
+          echo "MONGO_CLUSTER_HOSTS=10.4.8.7,10.4.8.22,10.4.8.38" >> $GITHUB_OUTPUT
+
+    outputs:
+      INSTANCE_TYPE: ${{ steps.get-instance-type.outputs.INSTANCE_TYPE }}
+      AMI_ID: ${{ steps.get-ami-id.outputs.AMI_ID }}
+      MONGO_CLUSTER_HOSTS: ${{ steps.get-list-of-running-replicaset-instance-ip-addresses-from-cloudformation-codebase.outputs.MONGO_CLUSTER_HOSTS }}
+
+  pre-flight-validation:
+    runs-on: ubuntu-latest
+    needs:
+      - setup-job-environment
+
+    steps:
+      - name: Generate github token
+        run: |
+          echo "A GitHub app installation token was generated for cloning repositories."
+          echo "The GitHub action, such as tibdex/github-app-token, can be used for the same purpose."
+
+      - name: Checkout Cloudformation repo
+        run: |
+          echo "Checkout the repository where the infrastructure was managed using code."
+          echo "The GitHub action, such as actions/checkout, can be used for the same purpose."
+
+      - name: Validate that instance is running
+        id: validate-that-instance-is-running
+        run: |
+          echo "Instance with given ip is running"
+          echo "IS_RUNNING=true" >> $GITHUB_OUTPUT
+
+      - name: Validate that attributes are not updated for given host
+        if: steps.validate-that-instance-is-running.outputs.IS_RUNNING == 'true'
+        id: validate-that-attributes-are-not-updated-for-given-host
+        run: |
+          echo "Attributes are not updated for given instance"
+          echo "ARE_ATTRIBUTES_ALREADY_UPDATED=false" >> $GITHUB_OUTPUT
+
+      - name: Validate that AMI supports CPU architecture associated with instance type
+        if: steps.validate-that-attributes-are-not-updated-for-given-host.outputs.ARE_ATTRIBUTES_ALREADY_UPDATED == 'false'
+        run: |
+          echo "${{ inputs.InstanceType || needs.setup-job-environment.outputs.INSTANCE_TYPE }} is compatible with AMI ID ${{ inputs.AmiId || needs.setup-job-environment.outputs.AMI_ID }}"
+
+      - name: Validate that AMI is CleverTap generated and based on ECS optimized AMI
+        if: steps.validate-that-attributes-are-not-updated-for-given-host.outputs.ARE_ATTRIBUTES_ALREADY_UPDATED == 'false'
+        run: |
+          echo "${{ inputs.AmiId || needs.setup-job-environment.outputs.AMI_ID }} is CleverTap generated and based on ECS optimized AMI"
+          echo "RESULT=true" >> $GITHUB_OUTPUT
+
+    outputs:
+      ARE_ATTRIBUTES_ALREADY_UPDATED: ${{ steps.validate-that-attributes-are-not-updated-for-given-host.outputs.ARE_ATTRIBUTES_ALREADY_UPDATED }}
+
+  pre-flight-validation-via-vpc-runner:
+    if: needs.pre-flight-validation.outputs.ARE_ATTRIBUTES_ALREADY_UPDATED == 'false'
+    runs-on: ${{ needs.setup-job-environment.outputs.STACK_PREFIX }}
+    needs:
+      - setup-job-environment
+      - pre-flight-validation
+
+    steps:
+      - name: Checkout repo where this GitHub Action is present
+        run: |
+          echo "Checkout the current repository"
+          echo "The GitHub action, such as actions/checkout, can be used for the same purpose."
+
+      - name: Validate that given private ip is not primary
+        id: validate-that-given-private-ip-is-not-primary
+        run: |
+          echo "${{ needs.setup-job-environment.outputs.MONGO_CLUSTER_HOSTS }} was used to connect to replac set"
+          if [[ "$primary_host" == "10.4.8.7" ]]; then
+            echo "error: Given host is primary"
+            echo "IS_PRIMARY=true" >> $GITHUB_OUTPUT
+          else
+            echo "Given host is not primary"
+            echo "IS_PRIMARY=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate that all instances of replicaset are healthy
+        if: ${{ steps.validate-that-given-private-ip-is-not-primary.outputs.IS_PRIMARY == 'false' }}
+        run: |
+          echo "all hosts are in healthy state"
+
+    outputs:
+      IS_PRIMARY: ${{ steps.validate-that-given-private-ip-is-not-primary.outputs.IS_PRIMARY }}
+
+  execute-stop-services:
+    if: needs.pre-flight-validation-via-vpc-runner.outputs.IS_PRIMARY == 'false'
+    runs-on: ubuntu-latest
+    needs:
+      - setup-job-environment
+      - pre-flight-validation
+      - pre-flight-validation-via-vpc-runner
+
+    steps:
+      - name: Checkout Cloudformation repo
+        run: |
+          echo "Checkout the repository where the infrastructure was managed using code."
+          echo "The GitHub action, such as actions/checkout, can be used for the same purpose."
+
+      - name: Stop services for the given Instance
+        run: |
+          echo "Commit the necessary attributes updated back to the infrastructure code base"
+          echo "Deploy the updated template cloudformation"
+
+
+  execute-terminate-instance:
+    runs-on: ubuntu-latest
+    needs:
+      - setup-job-environment
+      - pre-flight-validation
+      - pre-flight-validation-via-vpc-runner
+      - execute-stop-services
+
+    steps:
+      - name: Checkout Cloudformation repo
+        run: |
+          echo "Checkout the repository where the infrastructure was managed using code."
+          echo "The GitHub action, such as actions/checkout, can be used for the same purpose."
+
+      - name: Terminate the given Instance
+        run: |
+          echo "Commit the necessary attributes updated back to the infrastructure code base."
+          echo "Deploy the updated template cloudformation"
+
+  execute-start-instance-with-updated-attributes:
+    runs-on: ubuntu-latest
+    needs:
+      - setup-job-environment
+      - pre-flight-validation
+      - pre-flight-validation-via-vpc-runner
+      - execute-stop-services
+      - execute-terminate-instance
+
+    steps:
+      - name: Checkout Cloudformation repo
+        run: |
+          echo "Checkout the repository where the infrastructure was managed using code."
+          echo "The GitHub action, such as actions/checkout, can be used for the same purpose."
+
+      - name: Start the instance and services with updated attributes
+        run: |
+          echo "Commit the necessary attributes updated back to the infrastructure code base."
+          echo "Deploy the updated template cloudformation"
+
+  post-flight-validation-via-vpc-runner:
+    runs-on: ${{ needs.setup-job-environment.outputs.STACK_PREFIX }}
+    needs:
+      - setup-job-environment
+      - pre-flight-validation
+      - pre-flight-validation-via-vpc-runner
+      - execute-stop-services
+      - execute-terminate-instance
+      - execute-start-instance-with-updated-attributes
+
+    steps:
+      - name: Validate that all instances of replicaset are healthy
+        id: validate-that-all-instances-of-replicaset-are-healthy
+        run: |
+          echo "Wait until all instances of replicaset are healthy by polling it at a fixed interval."
