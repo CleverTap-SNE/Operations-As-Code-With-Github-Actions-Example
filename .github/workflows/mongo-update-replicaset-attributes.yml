@@ -139,7 +139,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        InstancePrivateIP: [${{ needs.setup-job-environment-via-vpc-runner.outputs.PRIMARY_HOST }}]
+        InstancePrivateIP: ${{ needs.setup-job-environment-via-vpc-runner.outputs.PRIMARY_HOST }}
 
 
     uses: ./.github/workflows/mongo-update-instance-attributes.yml
