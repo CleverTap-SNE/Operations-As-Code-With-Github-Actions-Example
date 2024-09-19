@@ -83,8 +83,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        InstancePrivateIP: ${{fromJSON(needs.setup-job-environment-via-vpc-runner.outputs.MONGO_REPLICASET_HOSTS_MATRIX)}}
-
+        InstancePrivateIP: [10.4.8.7, 10.4.8.22, 10.4.8.38]
     uses: ./.github/workflows/mongo-update-instance-attributes.yml
     secrets: inherit
     with:
@@ -140,7 +139,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        InstancePrivateIP: ${{ needs.setup-job-environment-via-vpc-runner.outputs.PRIMARY_HOST }}
+        InstancePrivateIP: [${{ needs.setup-job-environment-via-vpc-runner.outputs.PRIMARY_HOST }}]
 
 
     uses: ./.github/workflows/mongo-update-instance-attributes.yml
