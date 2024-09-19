@@ -139,9 +139,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        InstancePrivateIP: ${{ needs.setup-job-environment-via-vpc-runner.outputs.PRIMARY_HOST }}
-
-
+        InstancePrivateIP: ["10.4.8.22"]
     uses: ./.github/workflows/mongo-update-instance-attributes.yml
     secrets: inherit
     with:
