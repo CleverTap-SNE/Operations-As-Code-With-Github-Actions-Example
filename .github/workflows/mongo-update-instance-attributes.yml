@@ -128,7 +128,7 @@ jobs:
         id: validate-that-given-private-ip-is-not-primary
         run: |
           echo "${{ needs.setup-job-environment.outputs.MONGO_CLUSTER_HOSTS }} was used to connect to replac set"
-          if [[ "$primary_host" == "10.4.8.7" ]]; then
+          if [[ "${{ inputs.InstancePrivateIP }}" == "10.4.8.7" ]]; then
             echo "error: Given host is primary"
             echo "IS_PRIMARY=true" >> $GITHUB_OUTPUT
           else

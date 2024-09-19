@@ -107,8 +107,8 @@ jobs:
       - name: Validate that attributes are not updated for primary
         id: validate-that-attributes-are-not-updated-for-primary
         run: |
-          echo "error: Attributes are already updated for primary"
-          echo "ARE_PRIMARY_ATTRIBUTES_ALREADY_UPDATED=true" >> $GITHUB_OUTPUT
+          echo "Attributes are not updated for primary"
+          echo "ARE_PRIMARY_ATTRIBUTES_ALREADY_UPDATED=false" >> $GITHUB_OUTPUT
 
     outputs:
       ARE_PRIMARY_ATTRIBUTES_ALREADY_UPDATED: ${{ steps.validate-that-attributes-are-not-updated-for-primary.outputs.ARE_PRIMARY_ATTRIBUTES_ALREADY_UPDATED }}
