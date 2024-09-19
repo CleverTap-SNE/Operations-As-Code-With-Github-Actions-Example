@@ -113,7 +113,7 @@ jobs:
 
   pre-flight-validation-via-vpc-runner:
     if: needs.pre-flight-validation.outputs.ARE_ATTRIBUTES_ALREADY_UPDATED == 'false'
-    runs-on: ${{ needs.setup-job-environment.outputs.STACK_PREFIX }}
+    runs-on: ubuntu-latest
     needs:
       - setup-job-environment
       - pre-flight-validation
@@ -204,7 +204,7 @@ jobs:
           echo "Deploy the updated template cloudformation"
 
   post-flight-validation-via-vpc-runner:
-    runs-on: ${{ needs.setup-job-environment.outputs.STACK_PREFIX }}
+    runs-on: ubuntu-latest
     needs:
       - setup-job-environment
       - pre-flight-validation
