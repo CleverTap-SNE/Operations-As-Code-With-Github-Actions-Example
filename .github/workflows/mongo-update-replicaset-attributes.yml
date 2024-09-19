@@ -83,7 +83,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        InstancePrivateIP: [10.4.8.7, 10.4.8.22, 10.4.8.38]
+        InstancePrivateIP: ["10.4.8.7", "10.4.8.22", "10.4.8.38"]
     uses: ./.github/workflows/mongo-update-instance-attributes.yml
     secrets: inherit
     with:
