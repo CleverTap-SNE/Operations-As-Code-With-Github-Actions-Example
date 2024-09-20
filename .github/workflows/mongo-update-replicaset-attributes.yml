@@ -148,19 +148,3 @@ jobs:
       AmiId: ${{ inputs.AmiId }}
       InstanceType: ${{ inputs.InstanceType }}
 
-  execute-set-primary-to-az-a:
-    if: needs.pre-flight-validation-for-primary-instance-attributes-update.outputs.ARE_PRIMARY_ATTRIBUTES_ALREADY_UPDATED == 'false'
-    runs-on: ubuntu-latest
-    needs:
-      - setup-job-environment
-      - setup-job-environment-via-vpc-runner
-      - execute-instance-attributes-update-on-secondary-instances
-      - pre-flight-validation-for-primary-instance-attributes-update
-      - execute-step-down-primary
-      - execute-instance-attributes-update-on-old-primary-instance
-
-    steps:
-      - name: Set primary to Az A
-        run: |
-          echo "Set primary to Az A"
-
